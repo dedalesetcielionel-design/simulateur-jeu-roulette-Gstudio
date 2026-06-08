@@ -45,6 +45,18 @@
       from { border-color: #f59e0b; box-shadow: 0 0 10px #fbbf24; }
       to { border-color: #ffffff; box-shadow: 0 0 25px #fbbf24, inset 0 0 10px #fbbf24; }
     }
+    /* Eraser mode cursor */
+    .eraser-mode-active * { cursor: cell !important; }
+    .eraser-active-chip { animation: eraser-pulse 0.7s infinite alternate; }
+    @keyframes eraser-pulse {
+      from { box-shadow: 0 0 0 2px #ef4444; }
+      to   { box-shadow: 0 0 10px 4px #ef4444; }
+    }
+    /* Session closed */
+    .session-closed-overlay { pointer-events: none; opacity: 0.45; }
+    .gain-positive { color: #4ade80; }
+    .gain-negative { color: #f87171; }
+    .gain-neutral   { color: #6b7280; }
   </style>
 </head>
 <body class="text-neutral-100 min-h-screen p-3 sm:p-5 flex flex-col items-center">
@@ -68,29 +80,42 @@
       </div>
       
       <!-- TOP STATUS QUICK COUNTERS -->
-      <div class="flex gap-2 w-full md:w-auto">
+      <div class="flex gap-2 w-full md:w-auto flex-wrap justify-center md:justify-end">
+        <!-- Capital (fixed ref) -->
         <div class="flex-1 md:flex-initial px-3 py-1.5 bg-neutral-900 rounded-2xl border border-neutral-850 text-center min-w-[80px]">
           <p class="text-[9px] text-neutral-500 font-bold uppercase tracking-widest leading-none mb-1">Capital €</p>
           <div class="flex items-center justify-center gap-0.5 text-yellow-300 font-extrabold text-xs">
             <span>€</span>
-            <input
-              type="number"
-              id="headerCapital"
-              value="1000"
+            <input type="number" id="headerCapital" value="1000"
               class="w-14 bg-transparent border-none text-center font-black focus:outline-none focus:ring-0 p-0 text-yellow-300"
-              onchange="onCapitalChange(this.value)"
-            />
+              onchange="onCapitalChange(this.value)" />
           </div>
         </div>
-
-        <div class="flex-1 md:flex-initial px-3 py-1.5 bg-neutral-900 rounded-xl border border-neutral-850 text-center min-w-[75px] flex flex-col justify-center">
+        <!-- Mises -->
+        <div class="flex-1 md:flex-initial px-3 py-1.5 bg-neutral-900 rounded-xl border border-neutral-850 text-center min-w-[70px] flex flex-col justify-center">
           <p class="text-[9px] text-neutral-500 font-bold uppercase tracking-widest leading-none mb-1">Mises</p>
           <p id="headerMises" class="font-extrabold text-xs text-red-400 leading-none">0 €</p>
         </div>
-
-        <div class="flex-1 md:flex-initial px-3 py-1.5 bg-neutral-900 rounded-xl border border-neutral-850 text-center min-w-[80px] flex flex-col justify-center">
-          <p class="text-[9px] text-neutral-500 font-bold uppercase tracking-widest leading-none mb-1">Balance nette</p>
+        <!-- Balance -->
+        <div class="flex-1 md:flex-initial px-3 py-1.5 bg-neutral-900 rounded-xl border border-neutral-850 text-center min-w-[75px] flex flex-col justify-center">
+          <p class="text-[9px] text-neutral-500 font-bold uppercase tracking-widest leading-none mb-1">Balance</p>
           <p id="headerBalance" class="font-extrabold text-xs text-emerald-400 leading-none">1000 €</p>
+        </div>
+        <!-- Gain/Perte session -->
+        <div class="flex-1 md:flex-initial px-3 py-1.5 bg-neutral-900 rounded-xl border border-neutral-850 text-center min-w-[75px] flex flex-col justify-center">
+          <p class="text-[9px] text-neutral-500 font-bold uppercase tracking-widest leading-none mb-1">Gain / Perte</p>
+          <p id="headerGain" class="font-extrabold text-xs gain-neutral leading-none">0 €</p>
+        </div>
+        <!-- Session button + résultat final -->
+        <div class="flex flex-col items-center gap-1">
+          <button id="sessionToggleBtn" onclick="toggleSession()"
+            class="px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border transition cursor-pointer bg-emerald-900 border-emerald-600 text-emerald-300 hover:bg-emerald-800">
+            🟢 Session Ouverte
+          </button>
+          <div id="sessionResultBox" class="hidden px-2 py-0.5 bg-neutral-950 rounded-lg border border-amber-500/30 text-center">
+            <p class="text-[8px] text-neutral-500 uppercase">Résultat final</p>
+            <p id="sessionFinalVal" class="text-xs font-black gain-neutral">—</p>
+          </div>
         </div>
       </div>
     </header>
@@ -118,21 +143,17 @@
           <!-- MONETARY STATS STACK -->
           <div class="grid grid-cols-1 gap-2.5">
             
-            <!-- 1. DISPONIBLE / CAPITAL -->
+            <!-- 1. CAPITAL DE RÉFÉRENCE (fixe pour la session) -->
             <div class="px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-2xl flex items-center justify-between shadow-inner">
               <div class="text-left">
-                <p class="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Solde (Capital)</p>
-                <p class="text-[9px] text-neutral-500 font-medium">Cliquez pour modifier le capital</p>
+                <p class="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Capital de session</p>
+                <p class="text-[9px] text-neutral-500 font-medium">Valeur fixe de départ — référence gain/perte</p>
               </div>
               <div class="flex items-center gap-1.5 bg-neutral-950/60 px-3 py-1.5 rounded-xl border border-neutral-800">
                 <span class="text-yellow-400 font-black text-lg">€</span>
-                <input
-                  type="number"
-                  id="leftCapitalInput"
-                  value="1000"
+                <input type="number" id="leftCapitalInput" value="1000"
                   onchange="onCapitalChange(this.value)"
-                  class="w-20 bg-transparent border-none text-right font-black focus:outline-none focus:ring-0 p-0 text-yellow-300 text-lg"
-                />
+                  class="w-20 bg-transparent border-none text-right font-black focus:outline-none focus:ring-0 p-0 text-yellow-300 text-lg" />
               </div>
             </div>
 
@@ -155,6 +176,17 @@
               </div>
               <div id="leftBalanceDisplay" class="px-3.5 py-1.5 rounded-xl font-black text-sm border bg-neutral-950 border-neutral-850 text-neutral-400 min-w-[65px] text-center">
                 1000 €
+              </div>
+            </div>
+
+            <!-- 4. GAIN / PERTE SESSION -->
+            <div class="px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-2xl flex items-center justify-between">
+              <div class="text-left">
+                <p class="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Gain / Perte</p>
+                <p class="text-[9px] text-neutral-500 font-medium">Évolution par rapport au capital initial</p>
+              </div>
+              <div id="leftGainDisplay" class="px-3.5 py-1.5 rounded-xl font-black text-sm border bg-neutral-950 border-neutral-850 gain-neutral min-w-[65px] text-center">
+                0 €
               </div>
             </div>
 
@@ -197,7 +229,7 @@
           </div>
 
           <!-- ACTION BUTTONS -->
-          <div class="grid grid-cols-3 gap-2 pt-2 border-t border-neutral-900">
+          <div class="grid grid-cols-4 gap-2 pt-2 border-t border-neutral-900">
             <button
               onclick="doubleActiveBets()"
               class="py-2 px-2 bg-neutral-900 hover:bg-neutral-850 rounded-xl hover:text-yellow-300 border border-neutral-800 text-[10.5px] font-bold text-yellow-400 transition cursor-pointer flex flex-col items-center gap-1 active:scale-95"
@@ -211,6 +243,14 @@
             >
               <i data-lucide="arrow-right-left" class="w-4 h-4"></i>
               <span>Rejouer</span>
+            </button>
+            <button
+              id="eraserBtn"
+              onclick="toggleEraserMode()"
+              class="py-2 px-2 bg-neutral-900 hover:bg-neutral-850 rounded-xl hover:text-orange-300 border border-neutral-800 text-[10.5px] font-bold text-orange-400 transition cursor-pointer flex flex-col items-center gap-1 active:scale-95"
+            >
+              <i data-lucide="eraser" class="w-4 h-4"></i>
+              <span>Gomme</span>
             </button>
             <button
               onclick="clearActiveBets()"
@@ -327,12 +367,16 @@
     // Setup initial state
     let state = {
       capital: 1000,
+      initialCapital: 1000,   // référence fixe pour le calcul gain/perte
       bets: {},
       prevBets: {},
       activeChipValue: 5,
       activeTab: 'all',
       winningNumber: null,
       carpetMode: 'bet', // bet or draw
+      eraserMode: false,
+      sessionOpen: true,
+      sessionFinalBalance: null,
       history: [],
       capitalHistory: [],
       betsHistory: [],
@@ -520,6 +564,14 @@
     // Switch between placing bets and drawing winning numbers by clicking on the carpet
     function switchCarpetMode(mode) {
       state.carpetMode = mode;
+      // Quitter le mode gomme si on bascule en tirage
+      if (mode === 'draw' && state.eraserMode) {
+        state.eraserMode = false;
+        const btn = document.getElementById('eraserBtn');
+        if (btn) btn.className = 'py-2 px-2 bg-neutral-900 hover:bg-neutral-850 rounded-xl hover:text-orange-300 border border-neutral-800 text-[10.5px] font-bold text-orange-400 transition cursor-pointer flex flex-col items-center gap-1 active:scale-95';
+        const tapis = document.getElementById('feltTapisRoot');
+        if (tapis) tapis.classList.remove('eraser-mode-active');
+      }
       
       const betBtn = document.getElementById('modeBetBtn');
       const drawBtn = document.getElementById('modeDrawBtn');
@@ -978,6 +1030,16 @@
 
     // Main interaction handlers
     function placeBet(betId) {
+      // ERASER MODE : supprimer la mise sur cette case
+      if (state.eraserMode) {
+        if (state.bets[betId]) {
+          delete state.bets[betId];
+          updateUI();
+          renderTapisGrid();
+        }
+        return;
+      }
+
       const currentVal = state.bets[betId] || 0;
       const proposedVal = currentVal + state.activeChipValue;
       const totalExcludingProposed = calcTotalBettedAmount() - currentVal;
@@ -990,6 +1052,85 @@
       state.bets[betId] = proposedVal;
       updateUI();
       renderTapisGrid();
+    }
+
+    // ── GOMME ────────────────────────────────────────────────────────────────
+    function toggleEraserMode() {
+      state.eraserMode = !state.eraserMode;
+      const btn = document.getElementById('eraserBtn');
+      const tapis = document.getElementById('feltTapisRoot');
+
+      if (state.eraserMode) {
+        // Désactiver le mode mise/tirage pendant la gomme
+        btn.className = 'py-2 px-2 bg-red-900 rounded-xl border border-red-500 text-[10.5px] font-bold text-red-300 transition cursor-pointer flex flex-col items-center gap-1 active:scale-95 ring-2 ring-red-400';
+        // Curseur gomme sur tout le tapis
+        if (tapis) tapis.classList.add('eraser-mode-active');
+        showToast('🧹 Mode Gomme actif — cliquez sur une mise pour l\'effacer. Recliquez Gomme pour quitter.');
+      } else {
+        btn.className = 'py-2 px-2 bg-neutral-900 hover:bg-neutral-850 rounded-xl hover:text-orange-300 border border-neutral-800 text-[10.5px] font-bold text-orange-400 transition cursor-pointer flex flex-col items-center gap-1 active:scale-95';
+        if (tapis) tapis.classList.remove('eraser-mode-active');
+      }
+    }
+
+    // ── SESSION ───────────────────────────────────────────────────────────────
+    function toggleSession() {
+      if (state.sessionOpen) {
+        // Fermer la session → calculer le bilan final
+        state.sessionOpen = false;
+        state.sessionFinalBalance = state.capital;
+        const gain = state.capital - state.initialCapital;
+
+        const btn = document.getElementById('sessionToggleBtn');
+        btn.textContent = '🔴 Session Fermée';
+        btn.className = 'px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border transition cursor-pointer bg-red-900 border-red-600 text-red-300 hover:bg-red-800';
+
+        // Afficher le résultat final
+        const box = document.getElementById('sessionResultBox');
+        const val = document.getElementById('sessionFinalVal');
+        box.classList.remove('hidden');
+        const gainStr = (gain >= 0 ? '+' : '') + gain + ' €';
+        val.textContent = gainStr;
+        val.className = 'text-xs font-black ' + (gain > 0 ? 'gain-positive' : gain < 0 ? 'gain-negative' : 'gain-neutral');
+
+        showToast('Session fermée — Bilan : ' + gainStr + ' (Balance finale : ' + state.capital + ' €)');
+      } else {
+        // Rouvrir / nouvelle session
+        state.sessionOpen = true;
+        state.sessionFinalBalance = null;
+        state.initialCapital = state.capital;
+        state.history = [];
+        state.capitalHistory = [];
+        state.betsHistory = [];
+        state.bets = {};
+        state.prevBets = {};
+        state.winningNumber = null;
+
+        const btn = document.getElementById('sessionToggleBtn');
+        btn.textContent = '🟢 Session Ouverte';
+        btn.className = 'px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border transition cursor-pointer bg-emerald-900 border-emerald-600 text-emerald-300 hover:bg-emerald-800';
+
+        document.getElementById('sessionResultBox').classList.add('hidden');
+        document.getElementById('dynamicOutcomeBanner').style.display = 'none';
+
+        updateUI();
+        renderTapisGrid();
+        showToast('Nouvelle session ouverte — Capital de référence : ' + state.capital + ' €');
+      }
+    }
+
+    // ── TOAST NOTIFICATION ────────────────────────────────────────────────────
+    function showToast(msg) {
+      let t = document.getElementById('toastMsg');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = 'toastMsg';
+        t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1c1c1c;border:1px solid #f59e0b55;color:#fbbf24;font-size:11px;font-weight:700;padding:8px 18px;border-radius:20px;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:90vw;text-align:center;';
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      t.style.opacity = '1';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
     }
 
     function handleAddWinningNumber(num) {
@@ -1130,23 +1271,34 @@
     }
 
     function onCapitalChange(val) {
-      state.capital = Math.max(0, parseInt(val) || 0);
+      const v = Math.max(0, parseInt(val) || 0);
+      state.capital = v;
+      state.initialCapital = v; // reset référence quand on change le capital
       updateUI();
     }
 
     function updateUI() {
       const totalBets = calcTotalBettedAmount();
       const projBalance = state.capital - totalBets;
+      const gain = state.capital - state.initialCapital; // gain net depuis début session
 
-      // Update counters across all inputs
-      document.getElementById('headerCapital').value = state.capital;
-      document.getElementById('leftCapitalInput').value = state.capital;
+      // Capital de référence = valeur de DÉBUT de session, ne bouge pas
+      document.getElementById('headerCapital').value = state.initialCapital;
+      document.getElementById('leftCapitalInput').value = state.initialCapital;
       
       document.getElementById('headerMises').textContent = totalBets + ' €';
       document.getElementById('leftMisesDisplay').textContent = totalBets + ' €';
       
       document.getElementById('headerBalance').textContent = projBalance + ' €';
       document.getElementById('leftBalanceDisplay').textContent = projBalance + ' €';
+
+      // Gain / Perte
+      const gainStr = (gain >= 0 ? '+' : '') + gain + ' €';
+      const gainCls = gain > 0 ? 'gain-positive' : gain < 0 ? 'gain-negative' : 'gain-neutral';
+      document.getElementById('headerGain').textContent = gainStr;
+      document.getElementById('headerGain').className = 'font-extrabold text-xs ' + gainCls + ' leading-none';
+      document.getElementById('leftGainDisplay').textContent = gainStr;
+      document.getElementById('leftGainDisplay').className = 'px-3.5 py-1.5 rounded-xl font-black text-sm border text-center bg-neutral-950 border-neutral-850 ' + gainCls;
       
       // Dynamic colors based on projected credit status
       const headerColor = projBalance < 0 ? 'text-red-400' : 'text-emerald-400';
