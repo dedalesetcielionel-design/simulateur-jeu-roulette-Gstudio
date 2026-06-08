@@ -187,7 +187,7 @@
 
         </div>
 
-        {/* CHIPS SELECTION HUD */}
+        <!-- CHIPS SELECTION HUD -->
         <div class="bg-neutral-950/80 p-4 rounded-3xl border border-neutral-900/80 space-y-3.5 shadow-xl">
           <div>
             <h3 class="text-[10px] font-extrabold tracking-widest text-neutral-400 uppercase mb-2 text-center sm:text-left">Valeur de Jeton Actif</h3>
@@ -199,21 +199,21 @@
           <!-- ACTION BUTTONS -->
           <div class="grid grid-cols-3 gap-2 pt-2 border-t border-neutral-900">
             <button
-              onClick="doubleActiveBets()"
+              onclick="doubleActiveBets()"
               class="py-2 px-2 bg-neutral-900 hover:bg-neutral-850 rounded-xl hover:text-yellow-300 border border-neutral-800 text-[10.5px] font-bold text-yellow-400 transition cursor-pointer flex flex-col items-center gap-1 active:scale-95"
             >
               <i data-lucide="coins" class="w-4 h-4"></i>
               <span>Doubler</span>
             </button>
             <button
-              onClick="replaySavedBets()"
+              onclick="replaySavedBets()"
               class="py-2 px-2 bg-neutral-900 hover:bg-neutral-850 rounded-xl hover:text-emerald-300 border border-neutral-800 text-[10.5px] font-bold text-emerald-400 transition cursor-pointer flex flex-col items-center gap-1 active:scale-95"
             >
               <i data-lucide="arrow-right-left" class="w-4 h-4"></i>
               <span>Rejouer</span>
             </button>
             <button
-              onClick="clearActiveBets()"
+              onclick="clearActiveBets()"
               class="py-2 px-2 bg-neutral-900 hover:bg-red-950 rounded-xl hover:text-red-400 border border-neutral-800 text-[10.5px] font-bold text-red-500 transition cursor-pointer flex flex-col items-center gap-1 active:scale-95"
             >
               <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -260,7 +260,7 @@
           </div>
         </div>
 
-        {/* OUTCOME BANNER */}
+        <!-- OUTCOME BANNER -->
         <div id="dynamicOutcomeBanner" style="display: none;"></div>
 
         <!-- STATS AND HISTORIES -->
@@ -335,8 +335,96 @@
       carpetMode: 'bet', // bet or draw
       history: [],
       capitalHistory: [],
-      betsHistory: []
+      betsHistory: [],
+      hoveredBetId: null
     };
+
+    function getNumbersForBetId(betId) {
+      if (!betId) return [];
+      if (/^d+$/.test(betId)) {
+        return [parseInt(betId)];
+      }
+      if (betId.startsWith('cheval_') || betId.startsWith('carre_') || betId.startsWith('transv_') || betId.startsWith('sixain_')) {
+        return betId.split('_').slice(1).map(Number);
+      }
+      const RED_NUM = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+      if (betId === 'rouge') return RED_NUM;
+      if (betId === 'noir') return Array.from({ length: 36 }, (_, i) => i + 1).filter(n => !RED_NUM.includes(n));
+      if (betId === 'pair') return Array.from({ length: 36 }, (_, i) => i + 1).filter(n => n % 2 === 0);
+      if (betId === 'impair') return Array.from({ length: 36 }, (_, i) => i + 1).filter(n => n % 2 !== 0);
+      if (betId === 'manque') return Array.from({ length: 18 }, (_, i) => i + 1);
+      if (betId === 'passe') return Array.from({ length: 18 }, (_, i) => i + 19);
+      
+      if (betId === 'dz1') return Array.from({ length: 12 }, (_, i) => i + 1);
+      if (betId === 'dz2') return Array.from({ length: 12 }, (_, i) => i + 13);
+      if (betId === 'dz3') return Array.from({ length: 12 }, (_, i) => i + 25);
+      
+      if (betId === 'col1') return Array.from({ length: 36 }, (_, i) => i + 1).filter(n => n % 3 === 1);
+      if (betId === 'col2') return Array.from({ length: 36 }, (_, i) => i + 1).filter(n => n % 3 === 2);
+      if (betId === 'col3') return Array.from({ length: 36 }, (_, i) => i + 1).filter(n => n % 3 === 0);
+
+      return [];
+    }
+
+    function setHoveredBetId(betId) {
+      if (state.carpetMode !== 'bet') return;
+      state.hoveredBetId = betId;
+      updateCellHighlights();
+    }
+
+    function updateCellHighlights() {
+      if (state.carpetMode !== 'bet') return;
+      const involvedNums = getNumbersForBetId(state.hoveredBetId);
+      const RED_NUM = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+
+      for (let num = 0; num <= 36; num++) {
+        const cell = document.getElementById('cell-num-' + num);
+        if (!cell) continue;
+
+        const isWinning = state.winningNumber === num;
+        const isRed = RED_NUM.includes(num);
+        const isHovered = involvedNums.includes(num);
+
+        let classes = [];
+        if (num === 0) {
+          classes = ['relative', 'w-12', 'bg-emerald-700', 'border', 'border-emerald-500', 'rounded-xl', 'text-yellow-300', 'flex', 'items-center', 'justify-center', 'cursor-pointer', 'font-black', 'text-lg', 'transition', 'duration-150', 'min-h-[144px]'];
+          if (isWinning) {
+            classes.push('glowing-winner');
+          }
+          if (isHovered) {
+            classes.push('bg-emerald-600', 'ring-2', 'ring-yellow-400', 'border-yellow-300', 'z-25', 'shadow-[0_0_12px_#fbbf24]');
+          }
+        } else {
+          classes = ['relative', 'h-11', 'rounded-xl', 'flex', 'items-center', 'justify-center', 'font-extrabold', 'text-neutral-100', 'cursor-pointer', 'border', 'transition', 'duration-150', 'select-none'];
+          if (isRed) {
+            classes.push('bg-red-750', 'border-red-500/60');
+          } else {
+            classes.push('bg-neutral-950', 'border-neutral-800');
+          }
+          if (isWinning) {
+            classes.push('glowing-winner', 'bg-amber-500/25');
+          }
+          if (isHovered) {
+            classes.push('bg-yellow-500/20', 'ring-2', 'ring-yellow-400', 'border-yellow-400', 'z-25', 'shadow-[0_0_12px_#fbbf24]');
+          }
+        }
+        cell.className = classes.join(' ');
+      }
+
+      // Outer elements highlight
+      const outerBetIds = ['col1', 'col2', 'col3', 'dz1', 'dz2', 'dz3', 'manque', 'pair', 'rouge', 'noir', 'impair', 'passe'];
+      outerBetIds.forEach(id => {
+        const cell = document.getElementById('cell-outer-' + id);
+        if (!cell) return;
+        
+        const isHovered = state.hoveredBetId === id;
+        if (isHovered) {
+          cell.classList.add('ring-2', 'ring-yellow-400', 'border-yellow-400', 'z-25', 'shadow-[0_0_12px_#fbbf24]');
+        } else {
+          cell.classList.remove('ring-2', 'ring-yellow-400', 'border-yellow-400', 'z-25', 'shadow-[0_0_12px_#fbbf24]');
+        }
+      });
+    }
 
     // Initialize layout on ready
     window.addEventListener('DOMContentLoaded', () => {
@@ -344,7 +432,9 @@
       initChips();
       switchCarpetMode('bet'); // triggers tapis rendering
       updateUI();
-      lucide.createIcons();
+      if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+      }
     });
 
     function initTabs() {
@@ -375,20 +465,21 @@
       renderTapisGrid();
     }
 
-    function initChips() {
-      const g = document.getElementById('chipsSelectorGroup');
-      const vals = [1, 5, 10, 25, 100, 500];
-      g.innerHTML = vals.map(v => {
-        let style = 'bg-neutral-200 border-neutral-400 text-neutral-950';
-        if (v === 5) style = 'bg-red-650 border-red-500 text-white';
-        if (v === 10) style = 'bg-blue-650 border-blue-500 text-white';
-        if (v === 25) style = 'bg-emerald-650 border-emerald-500 text-white';
-        if (v === 100) style = 'bg-amber-600 border-amber-500 text-white';
-        if (v === 500) style = 'bg-purple-650 border-purple-500 text-white';
-        return `<button id="chip-v-${v}" onclick="setChipValue(${v})" class="w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition duration-150 relative active:scale-90 cursor-pointer ${style}">${v}</button>`;
-      }).join('');
-      setChipValue(5);
-    }
+     function initChips() {
+       const g = document.getElementById('chipsSelectorGroup');
+       const vals = [1, 2, 5, 10, 25, 100, 500];
+       g.innerHTML = vals.map(v => {
+         let style = 'bg-neutral-200 border-neutral-400 text-neutral-950 hover:bg-neutral-300';
+         if (v === 2) style = 'bg-orange-500 text-white font-bold hover:bg-orange-650';
+         if (v === 5) style = 'bg-red-600 border-red-500 text-white hover:bg-red-500';
+         if (v === 10) style = 'bg-blue-600 border-blue-500 text-white hover:bg-blue-500';
+         if (v === 25) style = 'bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500';
+         if (v === 100) style = 'bg-amber-500 border-amber-400 text-white hover:bg-amber-400';
+         if (v === 500) style = 'bg-purple-600 border-purple-500 text-white hover:bg-purple-500';
+         return `<button id="chip-v-${v}" onclick="setChipValue(${v})" class="w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition duration-150 relative active:scale-90 cursor-pointer ${style}">${v}</button>`;
+       }).join('');
+       setChipValue(5);
+     }
 
     function setChipValue(value) {
       state.activeChipValue = value;
@@ -402,19 +493,21 @@
     // Dynamic visual chip styling generator
     function getChipHTML(value) {
       if (!value || value <= 0) return '';
-      let styleClasses = 'from-neutral-100 to-neutral-250 text-neutral-900 border-neutral-400';
+      let styleClasses = 'from-neutral-100 to-neutral-200 text-neutral-900 border-neutral-400';
       let borderDashed = 'border-white/50';
 
-      if (value >= 5 && value < 10) {
-        styleClasses = 'from-red-650 to-red-800 text-white border-red-900';
+      if (value === 2) {
+        styleClasses = 'from-orange-400 to-orange-600 text-white border-orange-700';
+      } else if (value >= 5 && value < 10) {
+        styleClasses = 'from-red-500 to-red-700 text-white border-red-800';
       } else if (value >= 10 && value < 25) {
         styleClasses = 'from-blue-600 to-blue-800 text-white border-blue-900';
       } else if (value >= 25 && value < 100) {
-        styleClasses = 'from-emerald-600 to-emerald-800 text-white border-emerald-950';
+        styleClasses = 'from-emerald-500 to-emerald-700 text-white border-emerald-800';
       } else if (value >= 100 && value < 500) {
-        styleClasses = 'from-purple-600 to-purple-800 text-white border-purple-950';
+        styleClasses = 'from-purple-500 to-purple-700 text-white border-purple-800';
       } else if (value >= 500) {
-        styleClasses = 'from-amber-400 to-amber-600 text-neutral-950 border-amber-800';
+        styleClasses = 'from-amber-400 to-amber-600 text-neutral-950 border-amber-700';
         borderDashed = 'border-black/30';
       }
 
@@ -452,6 +545,14 @@
         e.stopPropagation();
         clickHandler();
       };
+      div.onmouseenter = (e) => {
+        e.stopPropagation();
+        setHoveredBetId(betId);
+      };
+      div.onmouseleave = (e) => {
+        e.stopPropagation();
+        setHoveredBetId(null);
+      };
       if (label) {
         div.textContent = label;
       }
@@ -469,6 +570,7 @@
 
       // ZERO PANEL
       const zeroCell = document.createElement('div');
+      zeroCell.id = 'cell-num-0';
       
       const zWinning = state.winningNumber === 0;
       let zeroHoverClass = '';
@@ -488,6 +590,14 @@
             placeBet('0');
           }
         }
+      };
+      zeroCell.onmouseenter = () => {
+        if (state.activeTab === 'all' || state.activeTab === 'plein') {
+          setHoveredBetId('0');
+        }
+      };
+      zeroCell.onmouseleave = () => {
+        setHoveredBetId(null);
       };
       zeroCell.innerHTML = `<span class="z-10 font-bold">0</span>`;
       
@@ -552,6 +662,7 @@
           }
 
           const cell = document.createElement('div');
+          cell.id = 'cell-num-' + num;
           cell.className = `relative h-11 rounded-xl flex items-center justify-center font-extrabold text-neutral-100 cursor-pointer border transition duration-150 select-none ${
             isRed ? 'bg-red-750 border-red-500/60' : 'bg-neutral-950 border-neutral-800'
           } ${isWinning ? 'glowing-winner bg-amber-500/25' : ''} ${numCellHoverStyle}`;
@@ -564,6 +675,14 @@
                 placeBet(String(num));
               }
             }
+          };
+          cell.onmouseenter = () => {
+            if (state.activeTab === 'all' || state.activeTab === 'plein') {
+              setHoveredBetId(String(num));
+            }
+          };
+          cell.onmouseleave = () => {
+            setHoveredBetId(null);
           };
           cell.innerHTML = `<span class="z-10 text-xs font-black">${num}</span>`;
 
@@ -617,6 +736,15 @@
                   e.stopPropagation();
                   toggleDirectSplit(num, nextNum);
                 };
+                const k = 'cheval_' + Math.min(num, nextNum) + '_' + Math.max(num, nextNum);
+                hitRight.onmouseenter = (e) => {
+                  e.stopPropagation();
+                  setHoveredBetId(k);
+                };
+                hitRight.onmouseleave = (e) => {
+                  e.stopPropagation();
+                  setHoveredBetId(null);
+                };
                 cell.appendChild(hitRight);
               }
               if (rIdx < 2) {
@@ -626,6 +754,15 @@
                 hitDown.onclick = (e) => {
                   e.stopPropagation();
                   toggleDirectSplit(num, nextNum);
+                };
+                const k = 'cheval_' + Math.min(num, nextNum) + '_' + Math.max(num, nextNum);
+                hitDown.onmouseenter = (e) => {
+                  e.stopPropagation();
+                  setHoveredBetId(k);
+                };
+                hitDown.onmouseleave = (e) => {
+                  e.stopPropagation();
+                  setHoveredBetId(null);
                 };
                 cell.appendChild(hitDown);
               }
@@ -640,6 +777,16 @@
               hitCorner.onclick = (e) => {
                 e.stopPropagation();
                 toggleDirectCorner([num, numRight, numDown, numDownRight]);
+              };
+              const sorted = [num, numRight, numDown, numDownRight].sort((a,b)=>a-b);
+              const k = 'carre_' + sorted.join('_');
+              hitCorner.onmouseenter = (e) => {
+                e.stopPropagation();
+                setHoveredBetId(k);
+              };
+              hitCorner.onmouseleave = (e) => {
+                e.stopPropagation();
+                setHoveredBetId(null);
               };
               cell.appendChild(hitCorner);
             }
@@ -656,6 +803,7 @@
       [3, 2, 1].forEach(colIndex => {
         const betId = 'col' + colIndex;
         const cell = document.createElement('div');
+        cell.id = 'cell-outer-' + betId;
         
         let colHover = '';
         if (state.carpetMode === 'bet') {
@@ -668,6 +816,12 @@
         
         cell.onclick = () => {
           if (state.carpetMode === 'bet') placeBet(betId);
+        };
+        cell.onmouseenter = () => {
+          setHoveredBetId(betId);
+        };
+        cell.onmouseleave = () => {
+          setHoveredBetId(null);
         };
         cell.innerHTML = `<span class="text-neutral-300 font-mono leading-none">2:1</span><span class="text-[8px] text-amber-500 font-black tracking-tighter mt-1">COL ${colIndex}</span>`;
         
@@ -703,7 +857,7 @@
         const isTrVisible = state.carpetMode === 'bet' && (state.activeTab === 'all' || state.activeTab === 'transv' || state.activeTab === 'plein');
         const displayStyle = isTrVisible ? 'flex' : 'none';
         
-        pillCell.innerHTML = `<div onclick="placeBet('${streetKey}')" style="display: ${displayStyle};" class="w-9 h-4 bg-amber-950/40 hover:bg-amber-500/60 border border-amber-600/35 rounded-md text-[8px] tracking-wider text-amber-300 font-black items-center justify-center cursor-pointer transition">
+        pillCell.innerHTML = `<div onclick="placeBet('${streetKey}')" onmouseenter="setHoveredBetId('${streetKey}')" onmouseleave="setHoveredBetId(null)" style="display: ${displayStyle};" class="w-9 h-4 bg-amber-950/40 hover:bg-amber-500/60 border border-amber-600/35 rounded-md text-[8px] tracking-wider text-amber-300 font-black items-center justify-center cursor-pointer transition">
           <span>Tr</span>
         </div>`;
 
@@ -716,7 +870,7 @@
           const isSxVisible = state.carpetMode === 'bet' && (state.activeTab === 'all' || state.activeTab === 'sixain' || state.activeTab === 'plein');
           const sxDisplay = isSxVisible ? 'flex' : 'none';
           
-          pillCell.innerHTML += `<div onclick="placeBet('${sixainKey}')" style="display: ${sxDisplay};" class="absolute right-[-7px] z-25 w-4 h-4 rounded-full bg-cyan-950/85 hover:bg-cyan-500 border border-cyan-500/50 text-[7px] text-cyan-300 font-black flex items-center justify-center cursor-pointer transition">
+          pillCell.innerHTML += `<div onclick="placeBet('${sixainKey}')" onmouseenter="setHoveredBetId('${sixainKey}')" onmouseleave="setHoveredBetId(null)" style="display: ${sxDisplay};" class="absolute right-[-7px] z-25 w-4 h-4 rounded-full bg-cyan-950/85 hover:bg-cyan-500 border border-cyan-500/50 text-[7px] text-cyan-300 font-black flex items-center justify-center cursor-pointer transition">
             <span>Sx</span>
           </div>`;
 
@@ -740,6 +894,7 @@
         const betId = 'dz' + d;
         const keysText = d === 1 ? '1 à 12' : d === 2 ? '13 à 24' : '25 à 36';
         const cell = document.createElement('div');
+        cell.id = 'cell-outer-' + betId;
         
         let dozHover = '';
         if (state.carpetMode === 'bet') {
@@ -752,6 +907,12 @@
         
         cell.onclick = () => {
           if (state.carpetMode === 'bet') placeBet(betId);
+        };
+        cell.onmouseenter = () => {
+          setHoveredBetId(betId);
+        };
+        cell.onmouseleave = () => {
+          setHoveredBetId(null);
         };
         cell.innerHTML = `<span class="text-neutral-300 font-bold leading-none">Douzaine ${keysText}</span><span class="text-[9px] text-amber-500 font-black mt-1 font-mono">2:1</span>`;
         if (state.bets[betId]) {
@@ -775,6 +936,7 @@
 
       chances.forEach(ch => {
         const cell = document.createElement('div');
+        cell.id = 'cell-outer-' + ch.id;
         const customBg = ch.bg || 'bg-emerald-900 border-emerald-800 hover:bg-emerald-800/80';
         
         let chanceHover = '';
@@ -788,6 +950,12 @@
         
         cell.onclick = () => {
           if (state.carpetMode === 'bet') placeBet(ch.id);
+        };
+        cell.onmouseenter = () => {
+          setHoveredBetId(ch.id);
+        };
+        cell.onmouseleave = () => {
+          setHoveredBetId(null);
         };
         cell.innerHTML = `<span class="font-bold">${ch.label}</span><span class="text-[9px] text-neutral-400 font-black mt-0.5">1:1</span>`;
         if (state.bets[ch.id]) {
@@ -998,8 +1166,6 @@
 
       // Toggle undo
       document.getElementById('undoBtn').style.display = state.capitalHistory.length > 0 ? 'block' : 'none';
-
-      // Update last outcome card
       const activeDrawingBadge = document.getElementById('activeDrawingBadge');
       if (state.winningNumber !== null) {
         const lastNum = state.winningNumber;
@@ -1008,17 +1174,17 @@
         const highLowText = lastNum === 0 ? '' : lastNum <= 18 ? 'Manque (1-18)' : 'Passe (19-36)';
         const cardBgClass = lastNum === 0 ? 'bg-emerald-600 border-emerald-400' : RED_NUMBERS.includes(lastNum) ? 'bg-red-600 border-red-400' : 'bg-neutral-800 border-neutral-600';
         
-        activeDrawingBadge.innerHTML = `<div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-white shadow-md ${cardBgClass}">
-            ${lastNum}
-          </div>
-          <div class="text-left font-sans">
-            <p class="text-xs font-black text-amber-200">${colorText} ${oddEvenText}</p>
-            <p class="text-[9.5px] text-neutral-400 font-medium">${highLowText}</p>
-          </div>
-        </div>`;
+        activeDrawingBadge.innerHTML = '<div class="flex items-center gap-3">' +
+          '<div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-white shadow-md ' + cardBgClass + '">' +
+            lastNum +
+          '</div>' +
+          '<div class="text-left font-sans">' +
+            '<p class="text-xs font-black text-amber-200">' + colorText + ' ' + oddEvenText + '</p>' +
+            '<p class="text-[9.5px] text-neutral-400 font-medium">' + highLowText + '</p>' +
+          '</div>' +
+        '</div>';
       } else {
-        activeDrawingBadge.innerHTML = `<p class="text-xs text-neutral-400 italic py-2">Aucun tirage actif</p>`;
+        activeDrawingBadge.innerHTML = '<p class="text-xs text-neutral-400 italic py-2">Aucun tirage actif</p>';
       }
 
       renderStats();
@@ -1033,35 +1199,34 @@
       
       let returnPayoutHTML = '';
       if (betBetted === 0) {
-        returnPayoutHTML = `<span class="text-neutral-500 italic text-[11px]">Aucune mise active enregistrée pour ce tirage</span>`;
+        returnPayoutHTML = '<span class="text-neutral-500 italic text-[11px]">Aucune mise active enregistrée pour ce tirage</span>';
       } else if (profitCoins > 0) {
-        returnPayoutHTML = `<span class="text-emerald-400 font-black flex items-center justify-center gap-1 text-sm bg-emerald-950/40 py-1.5 rounded-lg border border-emerald-500/20">Gains nets : +${profitCoins} € (Total Retour : ${wonCash} € sur ${betBetted} €)</span>`;
+        returnPayoutHTML = '<span class="text-emerald-400 font-black flex items-center justify-center gap-1 text-sm bg-emerald-950/40 py-1.5 rounded-lg border border-emerald-500/20">Gains nets : +' + profitCoins + ' € (Total Retour : ' + wonCash + ' € sur ' + betBetted + ' €)</span>';
       } else if (profitCoins === 0) {
-        returnPayoutHTML = `<span class="text-neutral-350">Mise remboursée (+0 €)</span>`;
+        returnPayoutHTML = '<span class="text-neutral-350">Mise remboursée (+0 €)</span>';
       } else {
-        returnPayoutHTML = `<span class="text-red-400 bg-red-950/20 py-1.5 rounded-lg border border-red-500/20 block">Résultat Perdu : -${Math.abs(profitCoins)} € (Misés : ${betBetted} €)</span>`;
+        returnPayoutHTML = '<span class="text-red-400 bg-red-950/20 py-1.5 rounded-lg border border-red-500/20 block">Résultat Perdu : -' + Math.abs(profitCoins) + ' € (Misés : ' + betBetted + ' €)</span>';
       }
 
       banner.className = 'bg-gradient-to-tr from-neutral-950 to-neutral-900 p-4 border-2 border-yellow-400/85 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center gap-1.5 mt-4';
-      banner.innerHTML = `
-        <div class="flex items-center gap-1 text-xs text-yellow-500 font-bold uppercase tracking-wider">
-          <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>
-          <span>Résultat de Tirage Calculé</span>
-        </div>
-        
-        <div class="flex items-center justify-center gap-3 mt-1">
-          <span class="text-2xl font-extrabold px-3.5 py-1.5 rounded-xl text-white shadow-xl bg-neutral-950/40 border border-neutral-800 ${cardColorClass}">${num}</span>
-          <div class="text-left leading-tight">
-            <p class="text-sm font-black text-amber-200">${detailLabel}</p>
-            <p class="text-[10px] text-neutral-400">Tirage enregistré en session</p>
-          </div>
-        </div>
-
-        <div class="pt-2 border-t border-neutral-900 w-full mt-1.5 text-xs font-bold">
-          ${returnPayoutHTML}
-        </div>
-      `;
-      lucide.createIcons();
+      banner.innerHTML = 
+        '<div class="flex items-center gap-1 text-xs text-yellow-500 font-bold uppercase tracking-wider">' +
+          '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>' +
+          '<span>Résultat de Tirage Calculé</span>' +
+        '</div>' +
+        '<div class="flex items-center justify-center gap-3 mt-1">' +
+          '<span class="text-2xl font-extrabold px-3.5 py-1.5 rounded-xl text-white shadow-xl bg-neutral-950/40 border border-neutral-800 ' + cardColorClass + '">' + num + '</span>' +
+          '<div class="text-left leading-tight">' +
+            '<p class="text-sm font-black text-amber-200">' + detailLabel + '</p>' +
+            '<p class="text-[10px] text-neutral-400">Tirage enregistré en session</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pt-2 border-t border-neutral-900 w-full mt-1.5 text-xs font-bold">' +
+          returnPayoutHTML +
+        '</div>';
+      if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+      }
     }
 
     function renderStats() {
@@ -1069,10 +1234,10 @@
       histTape.innerHTML = '';
 
       if (state.history.length === 0) {
-        histTape.innerHTML = `<p class="text-neutral-500 text-[10px] italic py-3 text-center w-full">Aucun tirage pour l'instant</p>`;
+        histTape.innerHTML = '<p class="text-neutral-500 text-[10px] italic py-3 text-center w-full">Aucun tirage pour l\'instant</p>';
         document.getElementById('statsRedBlack').textContent = '- / -';
         document.getElementById('statsEvenOdd').textContent = '- / -';
-        document.getElementById('distributionBars').innerHTML = `<p class="text-center text-neutral-500 py-4 italic text-[10px]">En attente de données...</p>`;
+        document.getElementById('distributionBars').innerHTML = '<p class="text-center text-neutral-500 py-4 italic text-[10px]">En attente de données...</p>';
         return;
       }
 
@@ -1080,7 +1245,7 @@
       state.history.slice(0, 12).forEach(item => {
         const bg = item.number === 0 ? 'bg-emerald-600' : RED_NUMBERS.includes(item.number) ? 'bg-red-650' : 'bg-neutral-800';
         const circle = document.createElement('div');
-        circle.className = `w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-black shadow-inner ${bg}`;
+        circle.className = 'w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-black shadow-inner ' + bg;
         circle.textContent = item.number;
         histTape.appendChild(circle);
       });
@@ -1095,30 +1260,28 @@
           else odd++;
         }
       });
-      document.getElementById('statsRedBlack').innerHTML = `<span class="text-red-400 font-bold">${reds} Rouge</span> / <span class="text-neutral-400 font-bold">${blacks} Noir</span>`;
-      document.getElementById('statsEvenOdd').innerHTML = `<span class="text-neutral-300 font-bold">${even} Pair</span> / <span class="text-neutral-300 font-bold">${odd} Impair</span>`;
+      document.getElementById('statsRedBlack').innerHTML = '<span class="text-red-400 font-bold">' + reds + ' Rouge</span> / <span class="text-neutral-400 font-bold">' + blacks + ' Noir</span>';
+      document.getElementById('statsEvenOdd').innerHTML = '<span class="text-neutral-300 font-bold">' + even + ' Pair</span> / <span class="text-neutral-300 font-bold">' + odd + ' Impair</span>';
 
       // Draw active distribution percentages
       const count = state.history.length;
       const redPercent = Math.round((reds / count) * 100) || 0;
       const blackPercent = Math.round((blacks / count) * 100) || 0;
       const evenPercent = Math.round((even / count) * 100) || 0;
-      const oddPercent = Math.round((odd / count) * 100) || 0;
 
-      document.getElementById('distributionBars').innerHTML = `
-        <div class="space-y-1">
-          <div class="flex justify-between text-[10px] font-bold text-neutral-400"><span>Rouges (${redPercent}%)</span><span class="text-red-400">${reds}</span></div>
-          <div class="w-full bg-neutral-900 rounded-full h-1.5"><div class="bg-red-600 h-1.5 rounded-full transition-all duration-350" style="width: ${redPercent}%"></div></div>
-        </div>
-        <div class="space-y-1">
-          <div class="flex justify-between text-[10px] font-bold text-neutral-400"><span>Noirs (${blackPercent}%)</span><span class="text-neutral-300">${blacks}</span></div>
-          <div class="w-full bg-neutral-900 rounded-full h-1.5"><div class="bg-neutral-400 h-1.5 rounded-full transition-all duration-350" style="width: ${blackPercent}%"></div></div>
-        </div>
-        <div class="space-y-1">
-          <div class="flex justify-between text-[10px] font-bold text-neutral-400"><span>Pairs (${evenPercent}%)</span><span class="text-neutral-300">${even}</span></div>
-          <div class="w-full bg-neutral-900 rounded-full h-1.5"><div class="bg-emerald-500 h-1.5 rounded-full transition-all duration-350" style="width: ${evenPercent}%"></div></div>
-        </div>
-      `;
+      document.getElementById('distributionBars').innerHTML = 
+        '<div class="space-y-1">' +
+          '<div class="flex justify-between text-[10px] font-bold text-neutral-400"><span>Rouges (' + redPercent + '%)</span><span class="text-red-400">' + reds + '</span></div>' +
+          '<div class="w-full bg-neutral-900 rounded-full h-1.5"><div class="bg-red-600 h-1.5 rounded-full transition-all duration-350" style="width: ' + redPercent + '%"></div></div>' +
+        '</div>' +
+        '<div class="space-y-1">' +
+          '<div class="flex justify-between text-[10px] font-bold text-neutral-400"><span>Noirs (' + blackPercent + '%)</span><span class="text-neutral-300">' + blacks + '</span></div>' +
+          '<div class="w-full bg-neutral-900 rounded-full h-1.5"><div class="bg-neutral-400 h-1.5 rounded-full transition-all duration-350" style="width: ' + blackPercent + '%"></div></div>' +
+        '</div>' +
+        '<div class="space-y-1">' +
+          '<div class="flex justify-between text-[10px] font-bold text-neutral-400"><span>Pairs (' + evenPercent + '%)</span><span class="text-neutral-300">' + even + '</span></div>' +
+          '<div class="w-full bg-neutral-900 rounded-full h-1.5"><div class="bg-emerald-500 h-1.5 rounded-full transition-all duration-350" style="width: ' + evenPercent + '%"></div></div>' +
+        '</div>';
     }
 
     function wipeStoredData() {
