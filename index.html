@@ -4,7 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Simulateur Roulette européenne - Mode Pro</title>
-  
+
+  <!-- PWA -->
+  <meta name="application-name" content="Roulette Pro">
+  <meta name="description" content="Simulateur de roulette européenne - suivez vos sessions sans risque financier">
+  <meta name="theme-color" content="#0c140c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Roulette Pro">
+  <link rel="manifest" id="pwa-manifest">
+
   <!-- Tailwind CSS Play CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   
@@ -1447,6 +1457,95 @@
         renderTapisGrid();
       }
     }
+
+    // ── PWA : manifest inline + service worker ────────────────────────────────
+    (function initPWA() {
+      // Icône roulette en SVG encodé base64
+      const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <rect width="512" height="512" rx="80" fill="#0c140c"/>
+        <circle cx="256" cy="256" r="200" fill="none" stroke="#f59e0b" stroke-width="18"/>
+        <circle cx="256" cy="256" r="140" fill="none" stroke="#f59e0b" stroke-width="10"/>
+        <circle cx="256" cy="256" r="30" fill="#f59e0b"/>
+        <circle cx="256" cy="96" r="16" fill="#ef4444"/>
+        <circle cx="256" cy="416" r="16" fill="#1a1a1a" stroke="#aaa" stroke-width="3"/>
+        <circle cx="96" cy="256" r="16" fill="#ef4444"/>
+        <circle cx="416" cy="256" r="16" fill="#1a1a1a" stroke="#aaa" stroke-width="3"/>
+        <circle cx="142" cy="142" r="14" fill="#1a1a1a" stroke="#aaa" stroke-width="3"/>
+        <circle cx="370" cy="370" r="14" fill="#ef4444"/>
+        <circle cx="370" cy="142" r="14" fill="#1a1a1a" stroke="#aaa" stroke-width="3"/>
+        <circle cx="142" cy="370" r="14" fill="#ef4444"/>
+        <text x="256" y="275" text-anchor="middle" font-size="52" font-weight="900" fill="#fbbf24" font-family="Georgia,serif">0</text>
+      </svg>`;
+      const iconB64 = 'data:image/svg+xml;base64,' + btoa(iconSvg);
+
+      // Injecter le manifest comme blob URL
+      const manifest = {
+        name: "Roulette Pro — Simulateur",
+        short_name: "Roulette Pro",
+        description: "Simulateur de roulette européenne - suivez vos sessions sans risque",
+        start_url: "./",
+        display: "standalone",
+        orientation: "portrait-primary",
+        background_color: "#0c140c",
+        theme_color: "#0c140c",
+        lang: "fr",
+        icons: [
+          { src: iconB64, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" },
+          { src: iconB64, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+      const manifestURL = URL.createObjectURL(blob);
+      document.getElementById('pwa-manifest').setAttribute('href', manifestURL);
+
+      // Service Worker inline (cache-first pour usage hors-ligne)
+      const swCode = `
+        const CACHE = 'roulette-pro-v1';
+        self.addEventListener('install', e => {
+          self.skipWaiting();
+        });
+        self.addEventListener('activate', e => {
+          e.waitUntil(clients.claim());
+        });
+        self.addEventListener('fetch', e => {
+          e.respondWith(
+            caches.match(e.request).then(r => r || fetch(e.request).catch(() => new Response('', {status: 503})))
+          );
+        });
+      `;
+      const swBlob = new Blob([swCode], { type: 'application/javascript' });
+      const swURL = URL.createObjectURL(swBlob);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register(swURL, { scope: './' }).catch(() => {});
+      }
+
+      // Bouton d'installation discret
+      let deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Afficher un petit bouton d'install dans le header
+        const btn = document.createElement('button');
+        btn.id = 'installPwaBtn';
+        btn.title = 'Installer comme application';
+        btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;background:#f59e0b;color:#0c140c;border:none;border-radius:50px;padding:10px 18px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 4px 20px rgba(245,158,11,0.5);display:flex;align-items:center;gap:8px;letter-spacing:0.05em;';
+        btn.innerHTML = '📲 Installer l\'app';
+        btn.onclick = async () => {
+          if (!deferredPrompt) return;
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          deferredPrompt = null;
+          btn.remove();
+        };
+        document.body.appendChild(btn);
+      });
+
+      window.addEventListener('appinstalled', () => {
+        const btn = document.getElementById('installPwaBtn');
+        if (btn) btn.remove();
+        showToast('✅ Application installée avec succès !');
+      });
+    })();
   </script>
 </body>
 </html>
