@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Simulateur Roulette européenne - Mode Pro</title>
   
+  <!-- PWA Meta Tags & Manifest links -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0c140c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
   <!-- Tailwind CSS Play CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   
@@ -1437,6 +1444,17 @@
         updateUI();
         renderTapisGrid();
       }
+    }
+  </script>
+
+  <!-- Register Service Worker for PWA capabilities -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('Service Worker enregistré avec succès !', reg.scope))
+          .catch(err => console.error('Erreur d'enregistrement du Service Worker :', err));
+      });
     }
   </script>
 </body>
