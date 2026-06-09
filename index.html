@@ -57,6 +57,27 @@
 <body class="text-neutral-100 min-h-screen p-3 sm:p-5 flex flex-col items-center">
 
   <div class="max-w-6xl w-full flex flex-col space-y-4">
+
+    <!-- BANNER PWA INSTALLATION (détectée dynamiquement par Chrome) -->
+    <div id="pwaInstallBanner" style="display: none;" class="bg-gradient-to-r from-emerald-950 to-neutral-900 border border-emerald-500/30 p-3.5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl transition-all duration-300">
+      <div class="flex items-center gap-3 text-center sm:text-left">
+        <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+          <i data-lucide="smartphone" class="w-5.5 h-5.5"></i>
+        </div>
+        <div>
+          <p class="text-xs font-black text-emerald-300 uppercase tracking-wider">Installer l'application sur votre appareil ?</p>
+          <p class="text-[10.5px] text-neutral-400 leading-tight">Profitez du simulateur en plein écran directement depuis votre écran d'accueil, même hors-ligne.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+        <button onclick="installPWA()" class="flex-1 sm:flex-initial px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black rounded-xl text-[10px] uppercase tracking-widest transition active:scale-95 cursor-pointer shadow-md">
+          Installer l'appli
+        </button>
+        <button onclick="dismissPWAInstall()" class="px-3 py-2 bg-neutral-950 hover:bg-neutral-850 text-neutral-400 hover:text-neutral-200 font-bold rounded-xl text-[10px] transition cursor-pointer">
+          Plus tard
+        </button>
+      </div>
+    </div>
     
     <!-- HEADER BAR -->
     <header class="flex flex-col md:flex-row items-center justify-between bg-neutral-950/85 p-4 rounded-3xl border border-amber-500/20 shadow-2xl backdrop-blur-md gap-4">
@@ -1447,8 +1468,60 @@
     }
   </script>
 
-  <!-- Register Service Worker for PWA capabilities -->
+  <!-- Register Service Worker and Handle PWA Installation prompting -->
   <script>
+    let deferredPrompt = null;
+
+    // Détecte l'événement beforeinstallprompt de Chrome / Android / Desktop
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Empêche l'affichage par défaut de Chrome
+      e.preventDefault();
+      // Conserve l'événement pour plus tard
+      deferredPrompt = e;
+      // Rend visible le bandeau d'installation PWA si l'utilisateur n'a pas déjà refusé pour cette session
+      const promoBanner = document.getElementById('pwaInstallBanner');
+      if (promoBanner && !sessionStorage.getItem('pwa_dismissed')) {
+        promoBanner.style.display = 'flex';
+      }
+    });
+
+    function installPWA() {
+      if (!deferredPrompt) {
+        alert("Pour installer l'application : sur Chrome, cliquez sur les 3 points en haut à droite puis 'Installer l'application'. Sur iPhone, cliquez sur 'Partager' puis 'Sur l'écran d'accueil'.");
+        return;
+      }
+      // Montre l'invite Chrome
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('L'utilisateur a accepté l'installation de la PWA');
+        } else {
+          console.log('L'utilisateur a repoussé l'installation de la PWA');
+        }
+        deferredPrompt = null;
+        dismissPWAInstall();
+      });
+    }
+
+    function dismissPWAInstall() {
+      const promoBanner = document.getElementById('pwaInstallBanner');
+      if (promoBanner) {
+        promoBanner.style.display = 'none';
+      }
+      // Évite de l'embêter à chaque rechargement pendant cette session
+      sessionStorage.setItem('pwa_dismissed', 'true');
+    }
+
+    // Détecte si l'application tourne déjà en mode autonome
+    window.addEventListener('DOMContentLoaded', () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if (isStandalone) {
+        console.log("L'application tourne en mode autonome autonome PWA !");
+        const promoBanner = document.getElementById('pwaInstallBanner');
+        if (promoBanner) promoBanner.style.display = 'none';
+      }
+    });
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
